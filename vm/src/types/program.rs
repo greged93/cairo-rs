@@ -1,3 +1,4 @@
+use crate::serde::deserialize_program::{Reference, ValueAddress};
 use crate::stdlib::{collections::HashMap, prelude::*, sync::Arc};
 
 #[cfg(feature = "cairo-1-hints")]
@@ -6,11 +7,9 @@ use crate::{
     hint_processor::hint_processor_definition::HintReference,
     serde::deserialize_program::{
         deserialize_and_parse_program, Attribute, BuiltinName, HintParams, Identifier,
-        InstructionLocation, OffsetValue, ReferenceManager,
+        InstructionLocation, ReferenceManager,
     },
-    types::{
-        errors::program_errors::ProgramError, instruction::Register, relocatable::MaybeRelocatable,
-    },
+    types::{errors::program_errors::ProgramError, relocatable::MaybeRelocatable},
 };
 #[cfg(feature = "cairo-1-hints")]
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
@@ -147,23 +146,70 @@ impl Program {
         reference_manager
             .references
             .iter()
-            .map(|r| {
-                HintReference {
-                    offset1: r.value_address.offset1.clone(),
-                    offset2: r.value_address.offset2.clone(),
-                    dereference: r.value_address.dereference,
-                    // only store `ap` tracking data if the reference is referred to it
-                    ap_tracking_data: match (&r.value_address.offset1, &r.value_address.offset2) {
-                        (OffsetValue::Reference(Register::AP, _, _), _)
-                        | (_, OffsetValue::Reference(Register::AP, _, _)) => {
-                            Some(r.ap_tracking_data.clone())
-                        }
-                        _ => None,
-                    },
-                    cairo_type: Some(r.value_address.value_type.clone()),
-                }
-            })
+            .map(|r| r.to_owned().into())
             .collect()
+    }
+}
+
+impl Program {
+    pub fn builtins(&self) -> &Vec<BuiltinName> {
+        &self.builtins
+    }
+
+    pub fn data(&self) -> &Vec<MaybeRelocatable> {
+        &self.shared_program_data.data
+    }
+
+    pub fn hints(&self) -> &HashMap<usize, Vec<HintParams>> {
+        &self.shared_program_data.hints
+    }
+
+    pub fn main(&self) -> &Option<usize> {
+        &self.shared_program_data.main
+    }
+
+    pub fn start(&self) -> &Option<usize> {
+        &self.shared_program_data.start
+    }
+
+    pub fn end(&self) -> &Option<usize> {
+        &self.shared_program_data.end
+    }
+
+    pub fn error_message_attributes(&self) -> &Vec<Attribute> {
+        &self.shared_program_data.error_message_attributes
+    }
+
+    pub fn instruction_locations(&self) -> &Option<HashMap<usize, InstructionLocation>> {
+        &self.shared_program_data.instruction_locations
+    }
+
+    pub fn identifiers(&self) -> &HashMap<String, Identifier> {
+        &self.shared_program_data.identifiers
+    }
+
+    pub fn constants(&self) -> &HashMap<String, Felt252> {
+        &self.constants
+    }
+
+    pub fn reference_manager(&self) -> ReferenceManager {
+        ReferenceManager {
+            references: self
+                .shared_program_data
+                .reference_manager
+                .iter()
+                .map(|r| Reference {
+                    value_address: ValueAddress {
+                        offset1: r.offset1.clone(),
+                        offset2: r.offset2.clone(),
+                        dereference: r.dereference,
+                        value_type: r.cairo_type.clone().unwrap_or_default(),
+                    },
+                    ap_tracking_data: r.ap_tracking_data.clone().unwrap_or_default(),
+                    pc: r.pc,
+                })
+                .collect(),
+        }
     }
 }
 
