@@ -453,7 +453,7 @@ pub fn parse_program(program: Program) -> ProgramJson {
         attributes: program.error_message_attributes().to_owned(),
         debug_info: program
             .instruction_locations()
-            .to_owned()
+            .clone()
             .map(|instruction_locations| DebugInfo {
                 instruction_locations,
             }),
@@ -474,12 +474,13 @@ mod tests {
     #[test]
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
     fn serialization_works() {
-        let reader = include_bytes!("../../cairo_programs/manually_compiled/valid_program_a.json");
+        let reader =
+            include_bytes!("../../../cairo_programs/manually_compiled/valid_program_a.json");
 
         let program: Program = deserialize_and_parse_program(reader, Some("main"))
             .expect("Failed to deserialize program");
 
-        let program_json = parse_program(program);
+        let program_json = parse_program(program.clone());
 
         let program_res =
             parse_program_json(program_json, Some("main")).expect("Failed to parse program");
