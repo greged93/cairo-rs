@@ -68,6 +68,8 @@ pub struct ProgramJson {
     pub reference_manager: ReferenceManager,
     pub attributes: Vec<Attribute>,
     pub debug_info: Option<DebugInfo>,
+    pub main_scope: String,
+    pub compiler_version: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -127,6 +129,14 @@ pub struct Identifier {
     pub members: Option<HashMap<String, Member>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cairo_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub decorators: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub size: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub destination: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub references: Option<Vec<Reference>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -142,6 +152,7 @@ pub struct Attribute {
     pub end_pc: usize,
     pub value: String,
     pub flow_tracking_data: Option<FlowTrackingData>,
+    pub accessible_scopes: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -560,6 +571,8 @@ pub fn parse_program(program: Program) -> ProgramJson {
             .map(|instruction_locations| DebugInfo {
                 instruction_locations,
             }),
+        main_scope: String::default(),
+        compiler_version: String::default(),
     }
 }
 
@@ -593,7 +606,7 @@ mod tests {
             format!("{:}", OffsetValue::Reference(Register::AP, -2, true))
         );
         assert_eq!(
-            "ap",
+            "ap - 0",
             format!("{:}", OffsetValue::Reference(Register::AP, 0, false))
         );
         assert_eq!(
@@ -618,7 +631,7 @@ mod tests {
             format!("{:}", OffsetValue::Reference(Register::FP, -2, true))
         );
         assert_eq!(
-            "fp",
+            "fp - 0",
             format!("{:}", OffsetValue::Reference(Register::FP, 0, false))
         );
         assert_eq!(
@@ -706,6 +719,8 @@ mod tests {
         let valid_json = r#"
             {
                 "prime": "0x800000000000011000000000000000000000000000000000000000000000001",
+                "main_scope": "__main__",
+                "compiler_version": "0.11.0",
                 "attributes": [],
                 "debug_info": {
                     "instruction_locations": {}
@@ -1124,6 +1139,10 @@ mod tests {
                 full_name: None,
                 members: None,
                 cairo_type: None,
+                decorators: Some(vec![]),
+                size: None,
+                destination: None,
+                references: None,
             },
         );
         identifiers.insert(
@@ -1137,6 +1156,10 @@ mod tests {
                 full_name: None,
                 members: None,
                 cairo_type: None,
+                decorators: None,
+                size: None,
+                destination: None,
+                references: None,
             },
         );
         identifiers.insert(
@@ -1148,6 +1171,10 @@ mod tests {
                 full_name: None,
                 members: None,
                 cairo_type: None,
+                decorators: None,
+                size: None,
+                destination: Some("starkware.cairo.common.math.unsigned_div_rem".to_string()),
+                references: None,
             },
         );
         identifiers.insert(
@@ -1161,6 +1188,10 @@ mod tests {
                 full_name: None,
                 members: None,
                 cairo_type: None,
+                decorators: None,
+                size: None,
+                destination: None,
+                references: None,
             },
         );
         identifiers.insert(
@@ -1172,6 +1203,10 @@ mod tests {
                 full_name: None,
                 members: None,
                 cairo_type: None,
+                decorators: None,
+                size: None,
+                destination: None,
+                references: None,
             },
         );
         identifiers.insert(
@@ -1183,6 +1218,10 @@ mod tests {
                 full_name: None,
                 members: None,
                 cairo_type: None,
+                decorators: None,
+                size: None,
+                destination: None,
+                references: None,
             },
         );
         identifiers.insert(
@@ -1194,6 +1233,10 @@ mod tests {
                 full_name: None,
                 members: None,
                 cairo_type: None,
+                decorators: None,
+                size: None,
+                destination: None,
+                references: None,
             },
         );
 
@@ -1206,6 +1249,8 @@ mod tests {
         let valid_json = r#"
             {
                 "prime": "0x800000000000011000000000000000000000000000000000000000000000001",
+                "main_scope": "__main__",
+                "compiler_version": "0.11.0",
                 "attributes": [],
                 "debug_info": {
                     "instruction_locations": {}
@@ -1304,7 +1349,9 @@ mod tests {
                 "reference_manager": {
                     "references": [
                     ]
-                }
+                },
+                "main_scope": "__main__",
+                "compiler_version": "0.11.0"
             }"#;
 
         let program_json: ProgramJson = serde_json::from_str(valid_json).unwrap();
@@ -1322,6 +1369,11 @@ mod tests {
                     },
                     reference_ids: HashMap::new(),
                 }),
+                accessible_scopes: vec![
+                    "openzeppelin.security.safemath.library".to_string(),
+                    "openzeppelin.security.safemath.library.SafeUint256".to_string(),
+                    "openzeppelin.security.safemath.library.SafeUint256.add".to_string(),
+                ],
             },
             Attribute {
                 name: String::from("error_message"),
@@ -1335,6 +1387,11 @@ mod tests {
                     },
                     reference_ids: HashMap::new(),
                 }),
+                accessible_scopes: vec![
+                    "openzeppelin.security.safemath.library".to_string(),
+                    "openzeppelin.security.safemath.library.SafeUint256".to_string(),
+                    "openzeppelin.security.safemath.library.SafeUint256.sub_le".to_string(),
+                ],
             },
         ];
 
@@ -1409,7 +1466,9 @@ mod tests {
                 "reference_manager": {
                     "references": [
                     ]
-                }
+                },
+                "main_scope": "__main__",
+                "compiler_version": "0.11.0"
             }"#;
 
         let program_json: ProgramJson = serde_json::from_str(valid_json).unwrap();
@@ -1514,7 +1573,9 @@ mod tests {
                 "reference_manager": {
                     "references": [
                     ]
-                }
+                },
+                "main_scope": "__main__",
+                "compiler_version": "0.11.0"
             }"#;
 
         let program_json: ProgramJson = serde_json::from_str(valid_json).unwrap();
