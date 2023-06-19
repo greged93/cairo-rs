@@ -98,7 +98,7 @@ mod tests {
                     offset1: OffsetValue::Reference(Register::AP, 2_i32, false),
                     offset2: OffsetValue::Value(0),
                     dereference: false,
-                    value_type: "felt*".to_string(),
+                    value_type: "felt".to_string(),
                 }
             )
         );
@@ -116,7 +116,7 @@ mod tests {
                     offset1: OffsetValue::Value(825323),
                     offset2: OffsetValue::Value(0),
                     dereference: false,
-                    value_type: "felt*".to_string(),
+                    value_type: "felt".to_string(),
                 }
             )
         );
